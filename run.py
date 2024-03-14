@@ -24,6 +24,8 @@ def main(arg):
     with open('./configs/default.yaml') as cf_file:
         default_config = yaml.safe_load(cf_file.read())
 
+    print(len(arg))
+
     if len(arg) == 1:
         with open(arg[0]) as cf_file:
             config = yaml.safe_load( cf_file.read() )
@@ -70,4 +72,4 @@ def main(arg):
 
 
 if __name__=='__main__':
-    main(sys.argv[1])
+    main(sys.argv[1:])
