@@ -1,0 +1,4 @@
+data_root : ./data/
+batch_size : 128
+model : vit_b_16
+run_id : alpha
