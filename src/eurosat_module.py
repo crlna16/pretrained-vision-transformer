@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 
 import torch
+import numpy as np
+import os
 
-from torchvision.datasets import Country211
+from sklearn.model_selection import train_test_split
+
+from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2
 
 import lightning as L
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 
-class Country211DataModule(L.LightningDataModule):
+class EuroSAT_RGB_DataModule(L.LightningDataModule):
     '''
     Lightning datamodule for the Country211 dataset
 
@@ -24,15 +28,15 @@ class Country211DataModule(L.LightningDataModule):
 
     @property
     def num_classes(self):
-        return 200 # TODO check
+        return 10
 
     def prepare_data(self):
         '''
-        Download the data
+        Download the data manually
+
+        https://zenodo.org/records/7711810#.ZAm3k-zMKEA
         '''
-        Country211(self.data_root, split='train', download=True)
-        Country211(self.data_root, split='valid', download=True)
-        Country211(self.data_root, split='test', download=True)
+        assert os.path.exists(self.data_root), print('Download URL: https://zenodo.org/records/7711810#.ZAm3k-zMKEA')
 
     def setup(self):
         '''
@@ -50,10 +54,16 @@ class Country211DataModule(L.LightningDataModule):
                                  v2.ToDtype(torch.float32, scale=True),
                                  v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
                                 ])
+
+        data = ImageFolder(self.data_root, transform=transforms)
+        targets = np.asarray(data.targets)
+
+        train_ix, test_ix = train_test_split(np.arange(len(data.targets)), test_size=5400, stratify=targets)
+        train_ix, valid_ix = train_test_split(train_ix, test_size=2700, stratify=targets[train_ix])
                                 
-        self.train_data = Country211(self.data_root, split='train', transform=transforms)
-        self.valid_data = Country211(self.data_root, split='valid', transform=transforms)
-        self.test_data = Country211(self.data_root, split='test', transform=transforms)
+        self.train_data = Subset(data, train_ix)
+        self.valid_data = Subset(data, valid_ix)
+        self.test_data = Subset(data, test_ix)
 
     def train_dataloader(self):
         return DataLoader(dataset=self.train_data, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)

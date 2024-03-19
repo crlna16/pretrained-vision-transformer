@@ -17,22 +17,26 @@ class VisionTransformerPretrained(L.LightningModule):
     Args:
       model (str)       : specifies which flavor of ViT to use
       num_classes (int) : number of output classes
+      learning_rate (float) : optimizer learning rate
 
     '''
 
-    def __init__(self, model, num_classes):
+    def __init__(self, model, num_classes, learning_rate):
 
         super().__init__()
 
         if model == 'vit_b_16':
-            backbone = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224", num_labels=250, ignore_mismatched_sizes=True)
+            backbone = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224", num_labels=num_classes, ignore_mismatched_sizes=True)
         else:
             raise ValueError(model)
 
         self.backbone = backbone
 
         # metrics
-        self.acc = torchmetrics.Accuracy('multiclass', num_classes=250)
+        self.acc = torchmetrics.Accuracy('multiclass', num_classes=num_classes)
+
+        # other
+        self.learning_rate = learning_rate
 
     def forward(self, x):
         return self.backbone(x)
@@ -44,7 +48,7 @@ class VisionTransformerPretrained(L.LightningModule):
 
        x, y = batch
        prediction = self.backbone(x)
-       y_hat = torch.softmax(prediction.logits, dim=-1)
+       y_hat = torch.argmax(prediction.logits, dim=-1)
 
        loss = F.cross_entropy(prediction.logits, y)
        acc = self.acc(y_hat, y)
@@ -68,9 +72,9 @@ class VisionTransformerPretrained(L.LightningModule):
     def test_step(self, batch, batch_idx):
         loss, acc, y_hat, y = self.step(batch)
 
-        #self.log('test_loss', loss, on_epoch=True, on_step=False, sync_dist=True)
-        #self.log('test_acc', acc, on_epoch=True, on_step=False, sync_dist=True)
+        self.log('test_loss', loss, on_epoch=True, on_step=False, sync_dist=True)
+        self.log('test_acc', acc, on_epoch=True, on_step=False, sync_dist=True)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
         return optimizer

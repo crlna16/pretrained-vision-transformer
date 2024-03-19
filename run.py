@@ -12,6 +12,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 
 sys.path.append('./src/')
 from country211_module import Country211DataModule
+from eurosat_module import EuroSAT_RGB_DataModule
 from vision_transformer import VisionTransformerPretrained
 
 import utils
@@ -23,8 +24,6 @@ def main(arg):
 
     with open('./configs/default.yaml') as cf_file:
         default_config = yaml.safe_load(cf_file.read())
-
-    print(len(arg))
 
     if len(arg) == 1:
         with open(arg[0]) as cf_file:
@@ -42,29 +41,44 @@ def main(arg):
     print()
 
     # setup data
-    datamodule = Country211DataModule(config['data_root'], config['batch_size'])
+
+    if config['data_set'] == 'Country211':
+        datamodule = Country211DataModule(config['data_root'], config['batch_size'])
+    elif config['data_set'] == 'EuroSAT_RGB':
+        datamodule = EuroSAT_RGB_DataModule(config['data_root'], config['batch_size'])
+        
     datamodule.prepare_data()
-    datamodule.setup('train')
+    datamodule.setup()
 
     train_dataloader = datamodule.train_dataloader()
     valid_dataloader = datamodule.valid_dataloader()
     test_dataloader = datamodule.test_dataloader()
 
+    print('Finished data loading')
+    print('Number of classes:', datamodule.num_classes)
+
     # setup model
-    model = VisionTransformerPretrained(config['model'], datamodule.num_classes)
+    model = VisionTransformerPretrained(config['model'], datamodule.num_classes, config['learning_rate'])
+    print('Finished model loading')
 
     # setup callbacks
-    early_stopping = EarlyStopping(monitor='valid_acc', patience=5, mode='max')
+    early_stopping = EarlyStopping(monitor='valid_acc', patience=config['early_stopping_patience'], mode='max')
 
     # logger
     logger = TensorBoardLogger("tensorboard_logs", name=config['run_id'])
 
     # train
-    trainer = L.Trainer(callbacks=[early_stopping], logger=logger, enable_progress_bar=False)
+    trainer = L.Trainer(max_epochs=config['max_epochs'],
+                        devices=config['devices'], 
+                        callbacks=[early_stopping], 
+                        logger=logger,
+                        enable_progress_bar=False)
     trainer.fit(model=model, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader)
 
     # test
+    print('Starting model test')
     trainer.test(model=model, dataloaders=test_dataloader, verbose=True)
+    print('Finished model test')
 
 
 
