@@ -18,13 +18,14 @@ class EuroSAT_RGB_DataModule(L.LightningDataModule):
 
     '''
 
-    def __init__(self, data_root, batch_size):
+    def __init__(self, data_root, batch_size, valid_size=2700):
         super().__init__()
 
         self.data_root = data_root
         self.batch_size = batch_size
 
         self.num_workers = 8
+        self.valid_size = valid_size
 
     @property
     def num_classes(self):
@@ -58,12 +59,19 @@ class EuroSAT_RGB_DataModule(L.LightningDataModule):
         data = ImageFolder(self.data_root, transform=transforms)
         targets = np.asarray(data.targets)
 
-        train_ix, test_ix = train_test_split(np.arange(len(data.targets)), test_size=5400, stratify=targets)
-        train_ix, valid_ix = train_test_split(train_ix, test_size=2700, stratify=targets[train_ix])
+        print(data)
+        print('Total number of samples: ', len(targets))
+
+        tmp_ix, test_ix = train_test_split(np.arange(len(targets)), test_size=5400, stratify=targets)
+        train_ix, valid_ix = train_test_split(tmp_ix, test_size=self.valid_size, stratify=targets[tmp_ix])
                                 
         self.train_data = Subset(data, train_ix)
         self.valid_data = Subset(data, valid_ix)
         self.test_data = Subset(data, test_ix)
+
+        print(f'Training samples: {len(self.train_data)}')
+        print(f'Validation samples: {len(self.valid_data)}')
+        print(f'Test samples: {len(self.test_data)}')
 
     def train_dataloader(self):
         return DataLoader(dataset=self.train_data, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)

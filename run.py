@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import os
 import yaml
 import pprint
 
@@ -41,11 +42,12 @@ def main(arg):
     print()
 
     # setup data
+    path_to_data = os.path.join(config['data_root'], config['data_set'])
 
     if config['data_set'] == 'Country211':
-        datamodule = Country211DataModule(config['data_root'], config['batch_size'])
+        datamodule = Country211DataModule(path_to_data, config['batch_size'])
     elif config['data_set'] == 'EuroSAT_RGB':
-        datamodule = EuroSAT_RGB_DataModule(config['data_root'], config['batch_size'])
+        datamodule = EuroSAT_RGB_DataModule(path_to_data, config['batch_size'], config['valid_size'])
         
     datamodule.prepare_data()
     datamodule.setup()

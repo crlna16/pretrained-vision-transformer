@@ -7,3 +7,4 @@ early_stopping_patience : 5
 devices : 1
 learning_rate : 0.0001
 max_epochs : 1000 # Lightning default
+valid_size : 2700
